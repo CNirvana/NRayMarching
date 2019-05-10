@@ -6,6 +6,8 @@ public class Shape : MonoBehaviour
     public ShapePrimitiveType primitiveType;
     public Color color;
     public Vector4 parameter;
+    public ShapeBlendOperation blendOperation;
+    public float smoothPower;
 
     private void OnEnable()
     {
@@ -27,7 +29,9 @@ public class Shape : MonoBehaviour
             primitiveType = (uint)this.primitiveType,
             position = this.transform.position,
             color = this.color,
-            parameter = this.parameter
+            parameter = this.parameter,
+            blendOperation = (uint)this.blendOperation,
+            smoothPower = this.smoothPower
         };
 
         return shapeData;

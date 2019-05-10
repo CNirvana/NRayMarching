@@ -40,6 +40,8 @@
                 float3 position;
                 float4 color;
                 float4 parameter;
+                uint blendOperation;
+                float smoothPower;
             };
 
             StructuredBuffer<ShapeData> _ShapeDatas;
@@ -70,6 +72,12 @@
             float _ReflectionIntensity;
             int _ReflectionIteration;
 
+            // Material
+            float _ToonAmount;
+            float _Glossiness;
+            float _RimThreshold;
+            float _RimAmount;
+
             #define EPSILON 0.001
 
             v2f vert (appdata v)
@@ -90,8 +98,7 @@
                 {
                     return sdSphere(p - shapeData.position, shapeData.parameter.w);
                 }
-
-                if (shapeData.primitiveType == 1)
+                else if (shapeData.primitiveType == 1)
                 {
                     return sdBox(p - shapeData.position, shapeData.parameter.xyz);
                 }
@@ -99,9 +106,27 @@
                 return 0;
             }
 
+            float4 combine(float4 d1, float4 d2, uint operation, float smoothPower)
+            {
+                if (operation == 0)
+                {
+                    return opSmoothUnion(d1, d2, smoothPower);
+                }
+                else if (operation == 1)
+                {
+                    return opSmoothSubtraction(d1, d2, smoothPower);
+                }
+                else if (operation == 2)
+                {
+                    return opSmoothIntersection(d1, d2, smoothPower);
+                }
+
+                return d2;
+            }
+
             float4 map(float3 p)
             {
-                float4 result = float4(0, 0, 0, 100000);
+                float4 result = float4(0, 0, 0, 10000);
 
                 if (_ShapeCount > 0)
                 {
@@ -110,9 +135,10 @@
                     for (int i = 1; i < _ShapeCount; i++)
                     {
                         ShapeData shapeData = _ShapeDatas[i];
-                        result = opUnion(result, float4(shapeData.color.rgb, sdf(p, shapeData)));
+                        result = combine(result, float4(shapeData.color.rgb, sdf(p, shapeData)), shapeData.blendOperation, shapeData.smoothPower);
                     }
                 }
+                // result = opSmoothSubtraction(result, float4(1, 1, 1, sdSphere(p, 1)), 0.1);
 
                 return result;
             }
@@ -179,20 +205,20 @@
             {
                 // diffuse
                 float NdotL = dot(n, -_LightDir);
-                float toonIntensity = smoothstep(0.1, 0.11, NdotL) * 0.5 + 0.5;
+                float toonIntensity = smoothstep(_ToonAmount - 0.01, _ToonAmount + 0.01, NdotL) * 0.5 + 0.5;
                 float3 diffuse = col * toonIntensity;
 
                 // specular
                 float3 h = normalize(-_LightDir + v);
                 float NdotH = dot(n, h);
-                float specularIntensity = pow(NdotH * toonIntensity, 32 * 32);
+                float specularIntensity = pow(NdotH * toonIntensity, _Glossiness * _Glossiness);
                 float specularIntensitySmooth = smoothstep(0.005, 0.01, specularIntensity);
                 float3 specular = specularIntensitySmooth * col;
 
                 // rim
                 float rim = 1 - dot(n, v);
-                float rimIntensity = rim * pow(NdotL, 0.2);
-                rimIntensity = smoothstep(0.7 - 0.01, 0.7 + 0.01, rimIntensity);
+                float rimIntensity = rim * pow(NdotL, _RimThreshold);
+                rimIntensity = smoothstep(_RimAmount - 0.01, _RimAmount + 0.01, rimIntensity);
                 float3 rimCol = rimIntensity * col;
 
                 fixed3 result = (diffuse + specular + rimCol) * _LightColor * _LightIntensity;

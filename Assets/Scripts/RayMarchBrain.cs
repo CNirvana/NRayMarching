@@ -64,6 +64,15 @@ public class RayMarchBrain : MonoBehaviour
     [Range(0.0f, 1.0f)]
     public float reflectionIntensity = 0.0f;
 
+    [Header("Material")]
+    [Range(0.0f, 1.0f)]
+    public float toonAmount = 0.1f;
+    public float glossiness = 32;
+    [Range(0.0f, 1.0f)]
+    public float rimAmount = 0.7f;
+    [Range(0.0f, 1.0f)]
+    public float rimThreshold = 0.1f;
+
     public Material Material
     {
         get
@@ -174,6 +183,11 @@ public class RayMarchBrain : MonoBehaviour
         this.Material.SetInt("_ReflectionIteration", this.reflectionIteration);
         this.Material.SetFloat("_ReflectionIntensity", this.reflectionIntensity);
 
+        this.Material.SetFloat("_ToonAmount", this.toonAmount);
+        this.Material.SetFloat("_Glossiness", this.glossiness);
+        this.Material.SetFloat("_RimAmount", this.rimAmount);
+        this.Material.SetFloat("_RimThreshold", this.rimThreshold);
+
         Graphics.Blit(source, destination, this.Material);
     }
 
@@ -183,6 +197,8 @@ public class RayMarchBrain : MonoBehaviour
         {
             _shapeDatas = new ShapeData[this.maxShapeCount];
         }
+
+        _shapes.Sort((shape1, shape2) => shape1.smoothPower.CompareTo(shape2.smoothPower));
 
         _shapeCount = _shapes.Count;
         for (int i = 0; i < _shapes.Count; i++)
